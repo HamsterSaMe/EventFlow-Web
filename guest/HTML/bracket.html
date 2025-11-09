@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tournament Bracket - EventFlow Guest</title>
+  <link rel="stylesheet" href="../CSS/style.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      margin: 0;
+      padding-top: 20px;
+    }
+
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .bracket-container {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 30px;
+      overflow-x: auto;
+      padding: 10px;
+      width: 90%;
+    }
+
+    .round {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .match {
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      min-width: 160px;
+      text-align: center;
+    }
+
+    .match p {
+      margin: 5px 0;
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    .winner {
+      background: #28a745;
+      color: white;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 13px;
+      display: inline-block;
+      margin-top: 6px;
+    }
+
+    .bye {
+      color: #999;
+    }
+
+    .champion {
+      background: gold;
+      color: black;
+      font-weight: bold;
+      padding: 10px 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.2);
+      margin-top: 20px;
+    }
+
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      font-size: 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin-bottom: 15px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tournament Bracket</h1>
+  <button id="backBtn">← Back to Attendance</button>
+
+  <div id="status" class="status-disconnected">Connecting to host...</div>
+  <div id="bracketSection" class="hidden">
+    <div id="bracketContainer" class="bracket-container"></div>
+    <div id="championSection" style="margin-top:20px; text-align:center;"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const statusElement = document.getElementById('status');
+    const bracketSection = document.getElementById('bracketSection');
+    const bracketContainer = document.getElementById('bracketContainer');
+    const championSection = document.getElementById('championSection');
+    const backBtn = document.getElementById('backBtn');
+
+    backBtn.addEventListener('click', () => {
+      window.location = '/';
+    });
+
+    socket.on('connect', () => {
+      statusElement.textContent = 'Connected to host';
+      statusElement.className = 'status-connected';
+    });
+
+    socket.on('disconnect', () => {
+      statusElement.textContent = 'Disconnected from host';
+      statusElement.className = 'status-disconnected';
+    });
+
+    // --- Render Bracket ---
+    function renderBracket(bracket) {
+      if (!bracket || !bracket.rounds || bracket.rounds.length === 0) {
+        bracketContainer.innerHTML = '<p>No bracket created yet.</p>';
+        championSection.innerHTML = '';
+        return;
+      }
+
+      bracketSection.classList.remove('hidden');
+      bracketContainer.innerHTML = '';
+
+      bracket.rounds.forEach((round, roundIndex) => {
+        const roundDiv = document.createElement('div');
+        roundDiv.className = 'round';
+
+        const roundTitle = document.createElement('h3');
+        roundTitle.textContent = `Round ${roundIndex + 1}`;
+        roundDiv.appendChild(roundTitle);
+
+        round.forEach((match, matchIndex) => {
+          const matchDiv = document.createElement('div');
+          matchDiv.className = 'match';
+
+          const a = document.createElement('p');
+          a.textContent = match.playerA || 'TBD';
+          if (a.textContent === 'BYE') a.classList.add('bye');
+
+          const b = document.createElement('p');
+          b.textContent = match.playerB || 'TBD';
+          if (b.textContent === 'BYE') b.classList.add('bye');
+
+          matchDiv.appendChild(a);
+          matchDiv.appendChild(b);
+
+          if (match.winner) {
+            const w = document.createElement('div');
+            w.className = 'winner';
+            w.textContent = 'Winner: ' + match.winner;
+            matchDiv.appendChild(w);
+          }
+
+          roundDiv.appendChild(matchDiv);
+        });
+
+        bracketContainer.appendChild(roundDiv);
+      });
+
+      // Champion Display
+      if (bracket.champion) {
+        championSection.innerHTML = `
+          <div class="champion">🏆 Champion: ${bracket.champion}</div>
+        `;
+      } else {
+        championSection.innerHTML = '';
+      }
+    }
+
+    socket.on('bracketUpdate', (bracket) => {
+      console.log('📡 Bracket updated:', bracket);
+      renderBracket(bracket);
+    });
+  </script>
+</body>
+</html>
