@@ -1,8 +1,3 @@
-// ==========================
-//  EventFlow Cloud Backend
-//  (Hosted on Azure)
-// ==========================
-
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -12,31 +7,28 @@ const cors = require('cors');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: "*", // allow all origins (for Electron host & guests)
-    methods: ["GET", "POST"]
-  }
+  cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
 const PORT = process.env.PORT || 3000;
 
-// Serve static guest website (HTML, CSS, JS)
-app.use(express.static(path.join(__dirname, 'guest')));
+// ===== Serve static files =====
+app.use(express.static(path.join(__dirname, 'guest/HTML')));
+app.use('/CSS', express.static(path.join(__dirname, 'guest/CSS')));
+app.use('/Scripts', express.static(path.join(__dirname, 'guest/Scripts')));
 app.use(cors());
 
-// ====== In-memory State ======
+// ===== In-memory State =====
 let attendanceList = [];
 let bracket = null;
 
-// ====== Socket.IO Connections ======
+// ===== Socket.IO =====
 io.on('connection', (socket) => {
   console.log(`✅ Client connected: ${socket.id}`);
 
-  // Send current state to new client
   socket.emit('attendanceList', attendanceList);
   socket.emit('bracketUpdated', bracket);
 
-  // --- Attendance handling ---
   socket.on('updateAttendanceList', (list) => {
     attendanceList = list;
     io.emit('attendanceList', attendanceList);
@@ -52,11 +44,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('getAttendance', () => {
-    socket.emit('attendanceList', attendanceList);
-  });
-
-  // --- Bracket updates from host ---
   socket.on('updateBracket', (data) => {
     bracket = data;
     io.emit('bracketUpdated', bracket);
@@ -68,7 +55,11 @@ io.on('connection', (socket) => {
   });
 });
 
-// ====== Basic API route for health check ======
+// ===== Default routes =====
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'guest/HTML', 'index.html'));
+});
+
 app.get('/api/status', (req, res) => {
   res.json({
     status: '✅ EventFlow Azure Server Running',
@@ -77,7 +68,7 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-// ====== Start Server ======
+// ===== Start Server =====
 server.listen(PORT, () => {
   console.log(`🌐 EventFlow Cloud running on port ${PORT}`);
 });
