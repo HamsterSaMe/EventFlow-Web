@@ -1,47 +1,54 @@
+// ==========================
+//  EventFlow Cloud Backend
+//  (Hosted on Azure)
+// ==========================
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // allow all origins (for Electron host & guests)
+    methods: ["GET", "POST"]
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 
-// ---------- STATIC HOSTING SETUP ----------
-app.use('/CSS', express.static(path.join(__dirname, 'guest/CSS')));
-app.use('/Scripts', express.static(path.join(__dirname, 'guest/Scripts')));
-app.use('/HTML', express.static(path.join(__dirname, 'guest/HTML')));
-app.use('/socket.io', express.static(path.join(__dirname, 'node_modules/socket.io/client-dist')));
+// Serve static guest website (HTML, CSS, JS)
+app.use(express.static(path.join(__dirname, 'guest')));
+app.use(cors());
 
-// Serve the main guest page by default
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'guest/HTML/Index.html'));
-});
-
-// Optional: direct route for tournament page
-app.get('/bracket.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'guest/HTML/bracket.html'));
-});
-
-// ---------- IN-MEMORY STATE ----------
+// ====== In-memory State ======
 let attendanceList = [];
 let bracket = null;
 
-// ---------- SOCKET.IO LOGIC ----------
+// ====== Socket.IO Connections ======
 io.on('connection', (socket) => {
-  console.log('✅ New client connected:', socket.id);
+  console.log(`✅ Client connected: ${socket.id}`);
+
+  // Send current state to new client
   socket.emit('attendanceList', attendanceList);
   socket.emit('bracketUpdated', bracket);
 
-  // Attendance logic
+  // --- Attendance handling ---
+  socket.on('updateAttendanceList', (list) => {
+    attendanceList = list;
+    io.emit('attendanceList', attendanceList);
+    console.log('🟢 Attendance list updated');
+  });
+
   socket.on('markAttendance', (name) => {
     const person = attendanceList.find(p => p.name === name);
     if (person) {
       person.attended = true;
       io.emit('attendanceList', attendanceList);
-      console.log(`${name} marked attended`);
+      console.log(`✅ ${name} marked attended`);
     }
   });
 
@@ -49,30 +56,28 @@ io.on('connection', (socket) => {
     socket.emit('attendanceList', attendanceList);
   });
 
-  socket.on('updateAttendanceList', (list) => {
-    attendanceList = list;
-    io.emit('attendanceList', attendanceList);
-    console.log('Updated attendance list');
-  });
-
-  // Bracket logic
+  // --- Bracket updates from host ---
   socket.on('updateBracket', (data) => {
     bracket = data;
     io.emit('bracketUpdated', bracket);
-    console.log('Bracket updated');
+    console.log('🏆 Bracket updated');
   });
 
   socket.on('disconnect', () => {
-    console.log('❌ Client disconnected:', socket.id);
+    console.log(`❌ Client disconnected: ${socket.id}`);
   });
 });
 
-// ---------- API STATUS ----------
+// ====== Basic API route for health check ======
 app.get('/api/status', (req, res) => {
-  res.json({ status: 'Server running', attendanceCount: attendanceList.length });
+  res.json({
+    status: '✅ EventFlow Azure Server Running',
+    guests: io.engine.clientsCount,
+    attendanceCount: attendanceList.length,
+  });
 });
 
-// ---------- START SERVER ----------
+// ====== Start Server ======
 server.listen(PORT, () => {
-  console.log(`🌐 EventFlow Web running on port ${PORT}`);
+  console.log(`🌐 EventFlow Cloud running on port ${PORT}`);
 });
