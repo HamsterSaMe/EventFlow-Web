@@ -4,10 +4,14 @@ const mysql = require('mysql2/promise');
 const dbConfig = {
   host: process.env.DB_HOST || 'eventflowmysql.mysql.database.azure.com',
   user: process.env.DB_USER || 'eventflowadmin',
-  password: process.env.DB_PASSWORD || 'MySqlSL82*', // ⚠️ Provide via env in production
+  password: process.env.DB_PASSWORD || 'MySqlSL82*',
   database: process.env.DB_NAME || 'eventflow_db',
-  port: Number(process.env.DB_PORT || 3306)
+  port: Number(process.env.DB_PORT || 3306),
+  ssl: {
+    rejectUnauthorized: false // Required for Azure
+  }
 };
+
 
 // Create connection pool
 let pool = null;
