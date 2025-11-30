@@ -304,10 +304,13 @@
 
   <button id="backBtn">← Back</button>
 
-  <script src="/socket.io/socket.io.js"></script>
+  <!-- Use CDN for Socket.IO to ensure it loads in all environments (preview/local/azure) -->
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script src="/Scripts/BackgroundModule.js"></script>
   <script>
-    const socket = io();
+    // Connect explicitly to the Azure backend to ensure consistent data sync
+    const socket = io('https://eventflowsystem-b4abbngfbufbc2gg.southeastasia-01.azurewebsites.net');
+    
     const statusElement = document.getElementById('status');
     const bracketSection = document.getElementById('bracketSection');
     const bracketContainer = document.getElementById('bracketContainer');
@@ -333,6 +336,9 @@
     socket.on('connect', () => {
       statusElement.textContent = 'Connected to host';
       statusElement.className = 'status-connected';
+      
+      // Request data immediately on connect to solve data disappearance on refresh
+      console.log('Requesting tournament data for ID:', tournamentId);
       socket.emit('requestTournament', tournamentId);
     });
 
@@ -341,12 +347,22 @@
       statusElement.className = 'status-disconnected';
     });
 
+    // --- Listen for Bracket Updates ---
+    socket.on('bracketUpdate', (data) => {
+      // Ensure the update is for THIS tournament
+      if (data && data.tournamentId == tournamentId) {
+        console.log('📡 Bracket received:', data.bracket);
+        renderBracket(data.bracket);
+      }
+    });
+
     // --- Render Bracket ---
     function renderBracket(bracket) {
       if (!bracket || !bracket.rounds || bracket.rounds.length === 0) {
         bracketContainer.innerHTML = '<p>No bracket created yet.</p>';
         championSection.innerHTML = '';
         registerSection.style.display = 'none';
+        bracketSection.classList.remove('hidden'); // Show empty state
         return;
       }
 
@@ -467,13 +483,6 @@
     });
 
     window.addEventListener('resize', fitToScreen);
-
-    socket.on('bracketUpdate', (data) => {
-      if (data && data.tournamentId == tournamentId) {
-        console.log('📡 Bracket updated:', data.bracket);
-        renderBracket(data.bracket);
-      }
-    });
 
     // Registration
     regBtn.addEventListener('click', () => {
