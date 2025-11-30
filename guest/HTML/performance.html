@@ -52,8 +52,8 @@
       border-radius: 0;
     }
     .card.now {
-      background: #fff;
-      outline: 4px solid #4a74f5;
+      background: #ffe6e6;
+      outline: 4px solid #ff4d4d;
       transform: scale(1.05);
       z-index: 10;
     }
@@ -152,16 +152,31 @@
       if (perf.showView === 'winners' || perf.finalized) {
         winnersBlock.style.display = 'block';
         winnerList.innerHTML='';
-        // Build ordered winners by the order they appear in performers list
-        const winners = perf.performers.filter(p=>p.isSelectedWinner);
-        winners.forEach((w,rank)=>{
+        
+        // Sort winners by score descending
+        const winners = perf.performers.filter(p=>p.isSelectedWinner)
+            .sort((a,b) => (b.totalScore || 0) - (a.totalScore || 0));
+
+        winners.forEach((w, index)=>{
+          const rank = index + 1;
+          let suffix = 'th';
+          if (rank % 10 === 1 && rank % 100 !== 11) suffix = 'st';
+          else if (rank % 10 === 2 && rank % 100 !== 12) suffix = 'nd';
+          else if (rank % 10 === 3 && rank % 100 !== 13) suffix = 'rd';
+
           const div = document.createElement('div');
           div.className = 'card winner';
-          div.innerHTML = `<div class='order'>WIN #${rank+1}</div><div class='name'>${w.displayName}</div>`;
+          div.innerHTML = `<div class='order'>${rank}${suffix} Place</div><div class='name'>${w.displayName}</div>`;
           winnerList.appendChild(div);
         });
       } else {
         winnersBlock.style.display = 'none';
+      }
+
+      // Auto-scroll to current
+      const currentCard = document.querySelector('.card.now');
+      if (currentCard) {
+        currentCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
   </script>
