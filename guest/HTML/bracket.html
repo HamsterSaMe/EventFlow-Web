@@ -6,108 +6,306 @@
   <title>Tournament Bracket - EventFlow Guest</title>
   <link rel="stylesheet" href="../CSS/style.css" />
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Anton&family=Roboto:ital,wght@0,400;0,700;1,700&display=swap');
+
     body {
-      font-family: Arial, sans-serif;
-      background: #f3f4f6;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #ffffff 100%);
+      margin: 0;
+      padding: 20px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
       height: 100vh;
-      margin: 0;
-      padding-top: 20px;
+      box-sizing: border-box;
+      overflow: hidden;
     }
 
-    h1 {
-      color: #333;
+    .module-header-title {
+      font-family: 'Anton', sans-serif;
+      font-size: 48px;
+      font-style: italic;
+      color: white;
+      -webkit-text-stroke: 2px black;
+      text-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+      text-align: center;
+      letter-spacing: 2px;
+      margin: 0 0 20px;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    #status {
       text-align: center;
       margin-bottom: 10px;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    .status-connected { color: green; }
+    .status-disconnected { color: red; }
+
+    .main-content {
+      display: flex;
+      flex: 1;
+      width: 100%;
+      max-width: 1400px;
+      gap: 20px;
+      overflow: hidden;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+      padding: 20px;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .bracket-scroll {
+      flex: 3;
+      overflow: auto;
+      display: flex;
+      padding: 20px;
+      position: relative;
     }
 
     .bracket-container {
       display: flex;
-      align-items: flex-start;
+      gap: 60px; /* Space for connectors */
+      padding: 20px;
+      min-height: 100%; 
+      margin: auto;
+    }
+
+    .zoom-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 100;
+    }
+
+    .zoom-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid black;
+      background: black;
+      color: white;
+      font-weight: bold;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
       justify-content: center;
-      gap: 30px;
-      overflow-x: auto;
-      padding: 10px;
-      width: 90%;
+      padding: 0;
+      transition: transform 0.1s;
+    }
+    .zoom-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: none;
+    }
+    .zoom-btn:hover {
+      background: #333;
     }
 
     .round {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      justify-content: space-around;
+      min-width: 180px;
+    }
+
+    .match-wrapper {
+      position: relative;
+      display: flex;
       align-items: center;
+      justify-content: center;
+      flex: 1;
+      padding: 10px 0;
     }
 
     .match {
-      background: #fff;
-      border-radius: 10px;
-      padding: 10px 15px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      min-width: 160px;
-      text-align: center;
+      background: white;
+      border: 3px solid black;
+      width: 100%;
+      position: relative;
+      z-index: 2;
+      box-shadow: 5px 5px 0px rgba(0,0,0,0.1);
     }
 
-    .match p {
-      margin: 5px 0;
-      font-weight: bold;
-      font-size: 15px;
+    .player-box {
+      padding: 10px;
+      font-weight: 800;
+      font-style: italic;
+      font-size: 16px;
+      border-bottom: 2px solid black;
+      text-transform: uppercase;
+      background: white;
+      min-height: 20px;
+    }
+    .player-box:last-child {
+      border-bottom: none;
     }
 
-    .winner {
-      background: #28a745;
+    /* Connectors */
+    .round:not(:first-child) .match::before {
+      content: '';
+      position: absolute;
+      left: -33px; /* Gap/2 + border */
+      top: 50%;
+      width: 30px;
+      height: 4px;
+      background: black;
+      transform: translateY(-50%);
+    }
+
+    .round:not(:last-child) .match-wrapper:nth-child(odd)::after {
+      content: '';
+      position: absolute;
+      right: -33px;
+      top: 50%;
+      width: 30px;
+      height: 50%;
+      border-top: 4px solid black;
+      border-right: 4px solid black;
+    }
+
+    .round:not(:last-child) .match-wrapper:nth-child(even)::after {
+      content: '';
+      position: absolute;
+      right: -33px;
+      bottom: 50%;
+      width: 30px;
+      height: 50%;
+      border-bottom: 4px solid black;
+      border-right: 4px solid black;
+    }
+
+    /* Champion Section */
+    .champion-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 250px;
+      border-left: 2px dashed #ccc;
+      padding-left: 20px;
+    }
+
+    .trophy-icon {
+      width: 120px;
+      height: 120px;
+      margin-bottom: 10px;
+      filter: drop-shadow(4px 4px 0px rgba(0,0,0,0.2));
+    }
+
+    .champion-ribbon {
+      background: #d00;
       color: white;
-      border-radius: 6px;
-      padding: 4px 8px;
-      font-size: 13px;
-      display: inline-block;
-      margin-top: 6px;
+      padding: 8px 30px;
+      font-family: 'Anton', sans-serif;
+      font-size: 24px;
+      text-transform: uppercase;
+      position: relative;
+      margin-bottom: 15px;
+      clip-path: polygon(0 0, 100% 0, 90% 50%, 100% 100%, 0 100%, 10% 50%);
+      box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
     }
 
-    .bye {
-      color: #999;
+    .winner-name {
+      font-family: 'Anton', sans-serif;
+      font-size: 42px;
+      font-style: italic;
+      color: #d00;
+      text-transform: uppercase;
+      text-align: center;
+      transform: rotate(-2deg);
+      text-shadow: 2px 2px 0px #000;
+      -webkit-text-stroke: 1px black;
     }
 
-    .champion {
-      background: gold;
-      color: black;
+    .register-section {
+      position: absolute;
+      top: 70px;
+      right: 20px;
+      background: white;
+      padding: 10px;
+      border: 2px solid black;
+      box-shadow: 4px 4px 0px black;
+      z-index: 10;
+    }
+
+    #backBtn {
+      margin-top: 20px;
+      background: white;
+      color: #111;
+      border: 2px solid #000;
+      border-radius: 30px;
+      font-size: 16px;
       font-weight: bold;
       padding: 10px 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 8px rgba(0,0,0,0.2);
-      margin-top: 20px;
+      cursor: pointer;
+      transition: transform 0.2s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      align-self: center;
+    }
+    #backBtn:hover { 
+        transform: scale(1.05);
+        background: white;
     }
 
     button {
       background: #007bff;
       color: white;
-      border: none;
+      border: 2px solid black;
       padding: 8px 15px;
-      font-size: 15px;
-      border-radius: 6px;
+      font-weight: bold;
       cursor: pointer;
-      transition: background 0.3s;
-      margin-bottom: 15px;
+      box-shadow: 2px 2px 0px black;
+    }
+    button:active {
+      transform: translate(2px, 2px);
+      box-shadow: none;
     }
 
-    button:hover {
-      background: #0056b3;
+    @media (max-width: 768px) {
+      body { overflow: auto; height: auto; }
+      .main-content { flex-direction: column-reverse; height: auto; }
+      .games-title { position: static; transform: none; margin: 10px 0; }
+      header { flex-direction: column; }
+      .champion-section { border-left: none; border-bottom: 2px dashed #ccc; padding-bottom: 20px; margin-bottom: 20px; }
     }
   </style>
 </head>
 <body>
-  <h1>Tournament Bracket</h1>
-  <button id="backBtn">← Back to Attendance</button>
+  <div class="module-header-title">TOURNAMENT BRACKET</div>
 
   <div id="status" class="status-disconnected">Connecting to host...</div>
-  <div id="bracketSection" class="hidden">
-    <div id="bracketContainer" class="bracket-container"></div>
-    <div id="championSection" style="margin-top:20px; text-align:center;"></div>
+  
+  <div id="registerSection" class="register-section" style="display:none;">
+    <input type="text" id="regName" placeholder="Enter your name" />
+    <button id="regBtn">Register</button>
   </div>
 
+  <div id="bracketSection" class="main-content hidden">
+    <div class="bracket-scroll">
+      <div id="bracketContainer" class="bracket-container"></div>
+    </div>
+    <div id="championSection" class="champion-section"></div>
+    <div class="zoom-controls">
+      <button class="zoom-btn" id="zoomInBtn" title="Zoom In">+</button>
+      <button class="zoom-btn" id="zoomOutBtn" title="Zoom Out">-</button>
+      <button class="zoom-btn" id="zoomFitBtn" title="Fit to Screen">⛶</button>
+    </div>
+  </div>
+
+  <button id="backBtn">← Back</button>
+
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/Scripts/BackgroundModule.js"></script>
   <script>
     const socket = io();
     const statusElement = document.getElementById('status');
@@ -115,14 +313,27 @@
     const bracketContainer = document.getElementById('bracketContainer');
     const championSection = document.getElementById('championSection');
     const backBtn = document.getElementById('backBtn');
+    const registerSection = document.getElementById('registerSection');
+    const regNameInput = document.getElementById('regName');
+    const regBtn = document.getElementById('regBtn');
+
+    // Get ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const tournamentId = urlParams.get('id');
+
+    if (!tournamentId) {
+      alert('No tournament ID provided');
+      window.location = '/tournament.html';
+    }
 
     backBtn.addEventListener('click', () => {
-      window.location = '/';
+      window.location = '/tournament.html';
     });
 
     socket.on('connect', () => {
       statusElement.textContent = 'Connected to host';
       statusElement.className = 'status-connected';
+      socket.emit('requestTournament', tournamentId);
     });
 
     socket.on('disconnect', () => {
@@ -135,43 +346,51 @@
       if (!bracket || !bracket.rounds || bracket.rounds.length === 0) {
         bracketContainer.innerHTML = '<p>No bracket created yet.</p>';
         championSection.innerHTML = '';
+        registerSection.style.display = 'none';
         return;
       }
 
       bracketSection.classList.remove('hidden');
       bracketContainer.innerHTML = '';
 
+      // Check for open slots
+      let openSlots = 0;
+      bracket.rounds[0].forEach(m => {
+        if (m.playerA === null) openSlots++;
+        if (m.playerB === null) openSlots++;
+      });
+
+      if (openSlots > 0) {
+        registerSection.style.display = 'flex';
+      } else {
+        registerSection.style.display = 'none';
+      }
+
       bracket.rounds.forEach((round, roundIndex) => {
         const roundDiv = document.createElement('div');
         roundDiv.className = 'round';
 
-        const roundTitle = document.createElement('h3');
-        roundTitle.textContent = `Round ${roundIndex + 1}`;
-        roundDiv.appendChild(roundTitle);
-
         round.forEach((match, matchIndex) => {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'match-wrapper';
+
           const matchDiv = document.createElement('div');
           matchDiv.className = 'match';
 
-          const a = document.createElement('p');
-          a.textContent = match.playerA || 'TBD';
-          if (a.textContent === 'BYE') a.classList.add('bye');
+          const p1 = document.createElement('div');
+          p1.className = 'player-box';
+          p1.textContent = match.playerA || 'TBD';
+          if (match.winner === match.playerA && match.playerA) p1.style.background = '#d4edda';
+          
+          const p2 = document.createElement('div');
+          p2.className = 'player-box';
+          p2.textContent = match.playerB || 'TBD';
+          if (match.winner === match.playerB && match.playerB) p2.style.background = '#d4edda';
 
-          const b = document.createElement('p');
-          b.textContent = match.playerB || 'TBD';
-          if (b.textContent === 'BYE') b.classList.add('bye');
-
-          matchDiv.appendChild(a);
-          matchDiv.appendChild(b);
-
-          if (match.winner) {
-            const w = document.createElement('div');
-            w.className = 'winner';
-            w.textContent = 'Winner: ' + match.winner;
-            matchDiv.appendChild(w);
-          }
-
-          roundDiv.appendChild(matchDiv);
+          matchDiv.appendChild(p1);
+          matchDiv.appendChild(p2);
+          wrapper.appendChild(matchDiv);
+          roundDiv.appendChild(wrapper);
         });
 
         bracketContainer.appendChild(roundDiv);
@@ -180,16 +399,89 @@
       // Champion Display
       if (bracket.champion) {
         championSection.innerHTML = `
-          <div class="champion">🏆 Champion: ${bracket.champion}</div>
+          <svg class="trophy-icon" viewBox="0 0 24 24" fill="gold" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 21h8m-4-9v9m-6.7-3a3 3 0 1 1 0-6h13.4a3 3 0 1 1 0 6M6 9a5 5 0 0 1 12 0"/>
+          </svg>
+          <div class="champion-ribbon">CHAMPIONS</div>
+          <div class="winner-name">${bracket.champion}</div>
         `;
       } else {
-        championSection.innerHTML = '';
+        championSection.innerHTML = `
+          <svg class="trophy-icon" style="opacity:0.3; fill:#eee;" viewBox="0 0 24 24" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 21h8m-4-9v9m-6.7-3a3 3 0 1 1 0-6h13.4a3 3 0 1 1 0 6M6 9a5 5 0 0 1 12 0"/>
+          </svg>
+          <div class="champion-ribbon" style="background:#ccc">CHAMPIONS</div>
+          <div class="winner-name" style="color:#ccc">???</div>
+        `;
       }
+      
+      setTimeout(fitToScreen, 50);
     }
 
-    socket.on('bracketUpdate', (bracket) => {
-      console.log('📡 Bracket updated:', bracket);
-      renderBracket(bracket);
+    let currentZoom = 1;
+
+    function fitToScreen() {
+      const container = document.querySelector('.bracket-scroll');
+      const content = document.getElementById('bracketContainer');
+      if (!container || !content) return;
+
+      // Reset zoom to measure natural size
+      content.style.zoom = 1;
+      
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      const contentWidth = content.scrollWidth;
+      const contentHeight = content.scrollHeight;
+
+      // Calculate scale
+      const scaleX = (containerWidth - 40) / contentWidth;
+      const scaleY = (containerHeight - 40) / contentHeight;
+      
+      let scale = Math.min(scaleX, scaleY);
+      if (scale > 1) scale = 1;
+
+      setZoom(scale);
+    }
+
+    function setZoom(zoom) {
+      currentZoom = zoom;
+      if (currentZoom < 0.1) currentZoom = 0.1;
+      if (currentZoom > 3) currentZoom = 3;
+      
+      const content = document.getElementById('bracketContainer');
+      if (content) content.style.zoom = currentZoom;
+    }
+
+    // Zoom Controls
+    document.getElementById('zoomInBtn').addEventListener('click', () => setZoom(currentZoom + 0.1));
+    document.getElementById('zoomOutBtn').addEventListener('click', () => setZoom(currentZoom - 0.1));
+    document.getElementById('zoomFitBtn').addEventListener('click', fitToScreen);
+
+    // Mouse Wheel Zoom (Ctrl + Wheel)
+    document.querySelector('.bracket-scroll').addEventListener('wheel', (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        setZoom(currentZoom + delta);
+      }
+    });
+
+    window.addEventListener('resize', fitToScreen);
+
+    socket.on('bracketUpdate', (data) => {
+      if (data && data.tournamentId == tournamentId) {
+        console.log('📡 Bracket updated:', data.bracket);
+        renderBracket(data.bracket);
+      }
+    });
+
+    // Registration
+    regBtn.addEventListener('click', () => {
+      const name = regNameInput.value.trim();
+      if (!name) return alert('Please enter your name');
+      
+      socket.emit('registerParticipant', { tournamentId, name });
+      regNameInput.value = '';
     });
   </script>
 </body>

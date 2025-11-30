@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Performance - Guest View</title>
+  <link rel="stylesheet" href="../CSS/style.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Anton&family=Roboto:ital,wght@0,400;0,700;1,700&display=swap');
+
+    body {
+      font-family: Inter, 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #ffffff 100%);
+      color: #111;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    h1 {
+      font-family: 'Anton', sans-serif;
+      font-size: 48px;
+      font-style: italic;
+      color: white;
+      -webkit-text-stroke: 2px black;
+      text-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+      text-align: center;
+      letter-spacing: 2px;
+      margin: 0 0 20px;
+      text-transform: uppercase;
+    }
+    .current {
+      font-size: 28px;
+      font-weight: bold;
+      margin: 20px 0;
+      text-align: center;
+      color: #fff;
+      text-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+      -webkit-text-stroke: 1px black;
+      font-family: 'Anton', sans-serif;
+      letter-spacing: 1px;
+    }
+    .list { display: flex; gap: 12px; flex-wrap: wrap; }
+    .card {
+      background: white;
+      border: 3px solid black;
+      padding: 10px 14px;
+      min-width: 140px;
+      position: relative;
+      box-shadow: 5px 5px 0px rgba(0,0,0,0.1);
+      color: black;
+      border-radius: 0;
+    }
+    .card.now {
+      background: #fff;
+      outline: 4px solid #4a74f5;
+      transform: scale(1.05);
+      z-index: 10;
+    }
+    .card.winner {
+      background: #d4edda;
+      outline: 4px solid #28a745;
+    }
+    .order { font-size: 12px; opacity: 0.7; font-weight: bold; text-transform: uppercase; }
+    .name { font-size: 18px; font-weight: 800; font-style: italic; text-transform: uppercase; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; }
+    .winners-title {
+      margin: 30px 0 10px;
+      font-size: 32px;
+      font-family: 'Anton', sans-serif;
+      color: #d00;
+      text-align: center;
+      text-transform: uppercase;
+      text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+      -webkit-text-stroke: 1px black;
+    }
+    .sub {
+      font-size: 14px;
+      opacity: 0.8;
+      margin-bottom: 20px;
+      text-align: center;
+      color: white;
+      font-weight: bold;
+      text-shadow: 1px 1px 0px black;
+    }
+    .back-btn {
+      background: white;
+      color: #111;
+      border: 2px solid #000;
+      padding: 10px 20px;
+      font-weight: bold;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: transform 0.2s;
+      display: block;
+      margin-bottom: 20px;
+    }
+    .back-btn:hover { transform: scale(1.05); }
+  </style>
+</head>
+<body>
+  <button class="back-btn" onclick="location.href='tournament.html'">← Back</button>
+  <h1 id="header">PERFORMANCE</h1>
+  <div id="subHeader" class="sub"></div>
+  <div id="current" class="current">Now Performing: -</div>
+  <div id="runningOrder" class="grid"></div>
+  <div id="winnersBlock" style="display:none;">
+    <div class="winners-title">WINNERS</div>
+    <div id="winnerList" class="grid"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/Scripts/BackgroundModule.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const tournamentId = Number(params.get('id'));
+    const socket = io();
+    let perf = null;
+
+    socket.on('connect', () => {
+      socket.emit('requestTournament', tournamentId); // reuse existing for background? elimination will ignore
+      socket.emit('requestPerformance', tournamentId); // new event (may be added later)
+    });
+
+    socket.on('performanceUpdate', (payload) => {
+      if (payload.tournamentId === tournamentId) {
+        perf = payload;
+        render();
+      }
+    });
+
+    function render() {
+      if (!perf) return;
+      document.getElementById('header').textContent = (perf.tournamentName || 'PERFORMANCE').toUpperCase();
+      document.getElementById('subHeader').textContent = `Performers: ${perf.performers.length} | View: ${perf.showView}`;
+      const currentIdx = perf.currentIndex;
+      const currentName = currentIdx >= 0 && currentIdx < perf.performers.length ? perf.performers[currentIdx].displayName : '-';
+      document.getElementById('current').textContent = 'Now Performing: ' + currentName;
+
+      const orderEl = document.getElementById('runningOrder');
+      orderEl.innerHTML = '';
+      perf.performers.forEach((p,i)=>{
+        const div = document.createElement('div');
+        div.className = 'card' + (i===currentIdx?' now':'') + (p.isSelectedWinner?' winner':'');
+        div.innerHTML = `<div class='order'>#${i+1}</div><div class='name'>${p.displayName}</div>`;
+        orderEl.appendChild(div);
+      });
+
+      const winnersBlock = document.getElementById('winnersBlock');
+      const winnerList = document.getElementById('winnerList');
+      if (perf.showView === 'winners' || perf.finalized) {
+        winnersBlock.style.display = 'block';
+        winnerList.innerHTML='';
+        // Build ordered winners by the order they appear in performers list
+        const winners = perf.performers.filter(p=>p.isSelectedWinner);
+        winners.forEach((w,rank)=>{
+          const div = document.createElement('div');
+          div.className = 'card winner';
+          div.innerHTML = `<div class='order'>WIN #${rank+1}</div><div class='name'>${w.displayName}</div>`;
+          winnerList.appendChild(div);
+        });
+      } else {
+        winnersBlock.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>

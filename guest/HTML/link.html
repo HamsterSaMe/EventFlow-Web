@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Links - EventFlow</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Anton&family=Roboto:ital,wght@0,400;0,700;1,700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Inter, "Segoe UI", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #ffffff 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .module-header-title {
+            font-family: 'Anton', sans-serif;
+            font-size: 48px;
+            font-style: italic;
+            color: white;
+            -webkit-text-stroke: 2px black;
+            text-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+            text-align: center;
+            letter-spacing: 2px;
+            margin: 20px 0 30px;
+            text-transform: uppercase;
+        }
+
+        .links-container {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            font-weight: bold;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .link-card {
+            background: white;
+            border-radius: 20px;
+            padding: 18px 24px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            text-decoration: none;
+            color: #111;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            min-height: 100px;
+        }
+
+        .link-card.has-bg {
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            border: none;
+        }
+
+        .link-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            filter: brightness(0.7);
+            transition: transform 0.3s;
+        }
+
+        .link-card:hover .link-bg {
+            transform: scale(1.05);
+        }
+
+        .link-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            width: 100%;
+        }
+
+        .link-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            flex-shrink: 0;
+            background: rgba(255,255,255,0.9);
+            overflow: hidden;
+        }
+
+        .link-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .link-title {
+            font-size: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .empty-state {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            color: #888;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .back-btn {
+            margin-top: 28px;
+            background: white;
+            color: #111;
+            border: 2px solid #000;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-decoration: none;
+        }
+        .back-btn:hover { 
+            transform: scale(1.05);
+            background: white;
+        }
+
+        @media (max-width: 520px) {
+            .link-card {
+                padding: 16px 20px;
+            }
+
+            .link-icon {
+                width: 50px;
+                height: 50px;
+            }
+
+            .link-title {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="module-header-title">LINKS</div>
+
+    <div id="linksContainer" class="links-container">
+        <div class="empty-state">
+            <p>Loading links...</p>
+        </div>
+    </div>
+
+    <a href="/" class="back-btn" title="Back to home">← Back</a>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/Scripts/link.js"></script>
+    <script src="/Scripts/BackgroundModule.js"></script>
+</body>
+</html>

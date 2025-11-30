@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tournaments - EventFlow Guest</title>
+  <link rel="stylesheet" href="../CSS/style.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Anton&family=Roboto:ital,wght@0,400;0,700;1,700&display=swap');
+
+    body {
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #ffffff 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding-top: 30px;
+    }
+
+    .module-header-title {
+      font-family: 'Anton', sans-serif;
+      font-size: 48px;
+      font-style: italic;
+      color: white;
+      -webkit-text-stroke: 2px black;
+      text-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+      text-align: center;
+      letter-spacing: 2px;
+      margin: 0 0 20px;
+      text-transform: uppercase;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 600px;
+    }
+
+    .tournament-list {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .tournament-item {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      font-weight: bold;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      cursor: pointer;
+      transition: transform 0.2s;
+      border: 2px solid transparent;
+    }
+
+    .tournament-item:hover {
+      transform: translateY(-3px);
+      border-color: #007bff;
+    }
+
+    .t-name {
+      font-size: 20px;
+      font-weight: bold;
+      color: #111;
+    }
+
+    .t-desc {
+      font-size: 14px;
+      color: #666;
+      margin-top: 5px;
+    }
+
+    .back-btn {
+      margin-top: 28px;
+      background: white;
+      color: #111;
+      border: 2px solid #000;
+      border-radius: 30px;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: transform 0.2s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .back-btn:hover { 
+        transform: scale(1.05);
+        background: white;
+    }
+
+    .content-area {
+      width: 100%;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+      padding: 20px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      justify-content: center;
+      min-height: 100px;
+    }
+
+    .no-tournaments-text {
+      font-weight: bold;
+      color: #111;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="module-header-title">TOURNAMENTS</div>
+
+  <div class="container">
+    <div id="status" style="text-align:center; margin-bottom:10px;">Connecting...</div>
+    <div id="tournamentList" class="tournament-list"></div>
+  </div>
+
+  <button class="back-btn" onclick="window.location='/'">← Back</button>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/Scripts/BackgroundModule.js"></script>
+  <script>
+    const socket = io();
+    const listContainer = document.getElementById('tournamentList');
+    const statusEl = document.getElementById('status');
+
+    socket.on('connect', () => {
+      statusEl.textContent = '';
+    });
+
+    socket.on('tournamentList', (list) => {
+      renderList(list);
+    });
+
+    function renderList(list) {
+      listContainer.innerHTML = '';
+      
+      // Show elimination tournaments with bracket OR sequential mode tournaments
+      const activeTournaments = list.filter(t => (t.mode === 'sequential') || t.bracket);
+
+      if (activeTournaments.length === 0) {
+        listContainer.innerHTML = `
+          <div class="content-area">
+            <p class="no-tournaments-text">No active tournaments at the moment.</p>
+          </div>
+        `;
+        return;
+      }
+
+      activeTournaments.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'tournament-item';
+        div.onclick = () => {
+          if (t.mode === 'sequential') {
+            window.location.href = `performance.html?id=${t.id}`;
+          } else {
+            window.location.href = `bracket.html?id=${t.id}`;
+          }
+        };
+        
+        // Apply background image if available
+        if (t.backgroundPath) {
+          div.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${t.backgroundPath}')`;
+          div.style.backgroundSize = 'cover';
+          div.style.backgroundPosition = 'center';
+          div.style.color = 'white';
+          div.style.textShadow = '0 2px 4px rgba(0,0,0,0.8)';
+        }
+
+        div.innerHTML = `
+          <div class="t-name" style="${t.backgroundPath ? 'color: white;' : ''}">${t.name}</div>
+        `;
+        listContainer.appendChild(div);
+      });
+    }
+  </script>
+</body>
+</html>
