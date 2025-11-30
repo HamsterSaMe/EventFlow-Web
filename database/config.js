@@ -1,10 +1,13 @@
 const mysql = require('mysql2/promise');
 
-// Database configuration
+// ==============================================================================
+// 🔧 SHARED AZURE DATABASE CONFIGURATION
+// This ensures both the Website and Electron App use the exact same DB.
+// ==============================================================================
 const dbConfig = {
   host: process.env.DB_HOST || 'eventflowmysql.mysql.database.azure.com',
   user: process.env.DB_USER || 'eventflowadmin',
-  password: process.env.DB_PASSWORD || 'MySqlSL82*',
+  password: process.env.DB_PASSWORD || 'MySqlSL82*', 
   database: process.env.DB_NAME || 'eventflow_db',
   port: Number(process.env.DB_PORT || 3306),
   ssl: {
@@ -12,37 +15,36 @@ const dbConfig = {
   }
 };
 
-
 // Create connection pool
 let pool = null;
 
 async function initializeDatabase() {
   try {
-    // First connect without database to create it if it doesn't exist
+    // 1. Test Connection
+    // Note: We use the config values directly to ensure consistency
     const tempConnection = await mysql.createConnection({
       host: dbConfig.host,
       user: dbConfig.user,
       password: dbConfig.password,
-      port: dbConfig.port
+      port: dbConfig.port,
+      ssl: dbConfig.ssl
     });
 
-    // Create database if it doesn't exist
+    // 2. Ensure DB Exists
     await tempConnection.query(`CREATE DATABASE IF NOT EXISTS ${dbConfig.database}`);
     await tempConnection.end();
 
-    // Create connection pool
+    // 3. Create Pool
     pool = mysql.createPool(dbConfig);
 
-    // Create tables
+    // 4. Setup Tables (Schema synchronization)
     await createTables();
-    
-    // Ensure attendance schema alignment (indexes, column defaults, migrations)
     await ensureAttendanceSchema();
 
-    console.log('✅ Database initialized successfully');
+    console.log('✅ Azure Server connected to Database successfully');
     return { ok: true };
   } catch (error) {
-    console.error('❌ Database initialization error:', error);
+    console.error('❌ Database Initialization Error:', error.message);
     return { ok: false, error: error.message };
   }
 }
@@ -64,7 +66,7 @@ async function createTables() {
       )
     `);
 
-    // Tournaments (with Mode)
+    // Tournaments
     await connection.query(`
       CREATE TABLE IF NOT EXISTS Tournaments (
         TournamentID INT AUTO_INCREMENT PRIMARY KEY,
@@ -74,22 +76,14 @@ async function createTables() {
       )
     `);
 
-    // Column migrations (idempotent)
+    // Fix Columns
     try {
       const [bgCols] = await connection.query("SHOW COLUMNS FROM Tournaments LIKE 'BackgroundPath'");
-      if (bgCols.length === 0) {
-        await connection.query("ALTER TABLE Tournaments ADD COLUMN BackgroundPath VARCHAR(255) NULL");
-        console.log('✅ Added BackgroundPath column to Tournaments table');
-      }
-    } catch (err) { console.error('Error adding BackgroundPath:', err); }
-
-    try {
+      if (bgCols.length === 0) await connection.query("ALTER TABLE Tournaments ADD COLUMN BackgroundPath VARCHAR(255) NULL");
+      
       const [modeCols] = await connection.query("SHOW COLUMNS FROM Tournaments LIKE 'Mode'");
-      if (modeCols.length === 0) {
-        await connection.query("ALTER TABLE Tournaments ADD COLUMN Mode VARCHAR(50) NOT NULL DEFAULT 'elimination'");
-        console.log('✅ Added Mode column to Tournaments table');
-      }
-    } catch (err) { console.error('Error adding Mode column:', err); }
+      if (modeCols.length === 0) await connection.query("ALTER TABLE Tournaments ADD COLUMN Mode VARCHAR(50) NOT NULL DEFAULT 'elimination'");
+    } catch (err) { console.error('Migration Warning:', err.message); }
 
     // Participants
     await connection.query(`
@@ -99,7 +93,7 @@ async function createTables() {
       )
     `);
 
-    // Elimination Matches
+    // Matches
     await connection.query(`
       CREATE TABLE IF NOT EXISTS Matches (
         MatchID INT AUTO_INCREMENT PRIMARY KEY,
@@ -119,7 +113,7 @@ async function createTables() {
       )
     `);
 
-    // Sequential Performance: Performers
+    // Performance
     await connection.query(`
       CREATE TABLE IF NOT EXISTS TournamentPerformers (
         PerformerID INT AUTO_INCREMENT PRIMARY KEY,
@@ -135,7 +129,6 @@ async function createTables() {
       )
     `);
 
-    // Sequential Performance: State
     await connection.query(`
       CREATE TABLE IF NOT EXISTS PerformanceState (
         TournamentID INT NOT NULL PRIMARY KEY,
@@ -148,14 +141,11 @@ async function createTables() {
       )
     `);
 
-    // Links (drop legacy schema if present)
+    // Links
     try {
       const [legacy] = await connection.query("SHOW COLUMNS FROM links LIKE 'icon'");
-      if (legacy.length > 0) {
-        await connection.query("DROP TABLE links");
-        console.log('⚠️ Dropped legacy links table');
-      }
-    } catch (e) { /* ignore */ }
+      if (legacy.length > 0) await connection.query("DROP TABLE links");
+    } catch (e) {}
 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS links (
@@ -168,31 +158,22 @@ async function createTables() {
       )
     `);
 
-    // Brochures
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS brochures (
-        id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
-        type VARCHAR(50) NOT NULL,
-        file_path VARCHAR(255),
-        url TEXT NOT NULL,
-        name VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    // Media Tables
+    const mediaTables = ['brochures', 'maps', 'backgrounds'];
+    for (const tbl of mediaTables) {
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS ${tbl} (
+          id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+          ${tbl === 'brochures' || tbl === 'maps' ? 'type VARCHAR(50) NOT NULL,' : ''}
+          file_path VARCHAR(255),
+          url TEXT NOT NULL,
+          name VARCHAR(255),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    }
 
-    // Maps
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS maps (
-        id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
-        type VARCHAR(50) NOT NULL,
-        file_path VARCHAR(255),
-        url TEXT NOT NULL,
-        name VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Settings
+    // Settings & Config
     await connection.query(`
       CREATE TABLE IF NOT EXISTS settings (
         setting_key VARCHAR(50) NOT NULL PRIMARY KEY,
@@ -201,18 +182,6 @@ async function createTables() {
       )
     `);
 
-    // Backgrounds
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS backgrounds (
-        id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
-        file_path VARCHAR(255),
-        url TEXT NOT NULL,
-        name VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Page Backgrounds
     await connection.query(`
       CREATE TABLE IF NOT EXISTS page_backgrounds (
         page_name VARCHAR(50) NOT NULL PRIMARY KEY,
@@ -221,101 +190,43 @@ async function createTables() {
       )
     `);
 
-    console.log('✅ All tables created / migrated successfully');
   } finally {
     connection.release();
   }
 }
 
-/**
- * Ensure Attendance table schema matches app expectations:
- * - Ensure columns: status (NOT NULL DEFAULT 'absent'), remark (TEXT NULL), date_scanned (DATETIME NULL)
- * - Make ticket_name nullable
- * - NO unique index on name (allow duplicates, ID is unique identifier)
- * - If legacy attended exists and status was missing, migrate attended -> status
- */
 async function ensureAttendanceSchema() {
-  if (!pool) {
-    throw new Error('Database pool not initialized');
-  }
+  if (!pool) return;
   const connection = await pool.getConnection();
   try {
-    // Table existence check
     const [tables] = await connection.query("SHOW TABLES LIKE 'attendance'");
-    if (tables.length === 0) {
-      console.warn('[DB] attendance table not found; will be created by createTables()');
-      return;
-    }
+    if (tables.length === 0) return;
 
-    // ticket_name -> ensure column exists and nullable
-    const [tnCols] = await connection.query("SHOW COLUMNS FROM attendance LIKE 'ticket_name'");
-    if (tnCols.length === 0) {
-      await connection.query("ALTER TABLE attendance ADD COLUMN ticket_name VARCHAR(255) NULL");
-    } else if (tnCols[0].Null === 'NO') {
-      await connection.query("ALTER TABLE attendance MODIFY COLUMN ticket_name VARCHAR(255) NULL");
-    }
+    const cols = {
+      'ticket_name': "VARCHAR(255) NULL",
+      'remark': "TEXT NULL",
+      'status': "VARCHAR(50) NOT NULL DEFAULT 'absent'",
+      'date_scanned': "DATETIME NULL"
+    };
 
-    // remark TEXT NULL
-    const [rmCols] = await connection.query("SHOW COLUMNS FROM attendance LIKE 'remark'");
-    if (rmCols.length === 0) {
-      await connection.query("ALTER TABLE attendance ADD COLUMN remark TEXT NULL");
-    }
-
-    // status VARCHAR(50) NOT NULL DEFAULT 'absent'
-    const [stCols] = await connection.query("SHOW COLUMNS FROM attendance LIKE 'status'");
-    const statusExists = stCols.length > 0;
-    if (!statusExists) {
-      await connection.query("ALTER TABLE attendance ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'absent'");
-      // Migrate legacy attended -> status if present
-      const [attCols] = await connection.query("SHOW COLUMNS FROM attendance LIKE 'attended'");
-      if (attCols.length > 0) {
-        await connection.query(
-          "UPDATE attendance SET status = CASE WHEN attended = 1 OR attended = TRUE THEN 'present' ELSE 'absent' END"
-        );
-      }
-    } else {
-      const st = stCols[0];
-      const needsFix =
-        st.Null !== 'NO' ||
-        !/varchar\(\s*50\s*\)/i.test(st.Type) ||
-        (st.Default ?? null) !== 'absent';
-      if (needsFix) {
-        await connection.query("ALTER TABLE attendance MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'absent'");
+    for (const [col, def] of Object.entries(cols)) {
+      const [check] = await connection.query(`SHOW COLUMNS FROM attendance LIKE '${col}'`);
+      if (check.length === 0) {
+        await connection.query(`ALTER TABLE attendance ADD COLUMN ${col} ${def}`);
       }
     }
 
-    // date_scanned DATETIME NULL
-    const [dsCols] = await connection.query("SHOW COLUMNS FROM attendance LIKE 'date_scanned'");
-    if (dsCols.length === 0) {
-      await connection.query("ALTER TABLE attendance ADD COLUMN date_scanned DATETIME NULL");
-    } else {
-      const typeIsDatetime = dsCols[0].Type.toUpperCase() === 'DATETIME';
-      const isNullable = dsCols[0].Null === 'YES';
-      if (!typeIsDatetime || !isNullable) {
-        await connection.query("ALTER TABLE attendance MODIFY COLUMN date_scanned DATETIME NULL");
-      }
-    }
-
-    // Remove any unique index on name if exists (allow duplicate names)
-    const [idxRows] = await connection.query(
-      "SHOW INDEX FROM attendance WHERE Column_name = 'name' AND Non_unique = 0"
-    );
+    const [idxRows] = await connection.query("SHOW INDEX FROM attendance WHERE Column_name = 'name' AND Non_unique = 0");
     if (idxRows.length > 0) {
-      const indexName = idxRows[0].Key_name;
-      await connection.query(`ALTER TABLE attendance DROP INDEX ${indexName}`);
-      console.log(`✅ Removed unique index on name: ${indexName}`);
+      await connection.query(`ALTER TABLE attendance DROP INDEX ${idxRows[0].Key_name}`);
     }
-
-    console.log('✅ Attendance schema migration complete');
   } finally {
     connection.release();
   }
 }
 
 function getPool() {
-  if (!pool) {
-    throw new Error('Database pool not initialized');
-  }
+  if (!pool) throw new Error('Database pool not initialized');
   return pool;
 }
 
