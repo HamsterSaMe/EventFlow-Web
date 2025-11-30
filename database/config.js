@@ -2,7 +2,7 @@ const mysql = require('mysql2/promise');
 
 // Database configuration
 const dbConfig = {
-  host: process.env.DB_HOST || 'eventflow.mysql.database.azure.com',
+  host: process.env.DB_HOST || 'eventflowmysql.mysql.database.azure.com',
   user: process.env.DB_USER || 'eventflowadmin',
   password: process.env.DB_PASSWORD || 'MySqlSL82*', // ⚠️ Provide via env in production
   database: process.env.DB_NAME || 'eventflow_db',
