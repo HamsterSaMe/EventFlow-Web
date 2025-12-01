@@ -1,37 +1,22 @@
 const mysql = require('mysql2/promise');
 
 // ==============================================================================
-// 🔧 AZURE DATABASE CONFIGURATION
-// This config works for BOTH Electron Host and Azure Website.
-// You MUST use <username>@<server-name> for Azure authentication.
+// 🔧 SHARED AZURE DATABASE CONFIGURATION
+// This ensures both the Website and Electron App use the exact same DB.
 // ==============================================================================
 const dbConfig = {
   host: process.env.DB_HOST || 'eventflowmysql.mysql.database.azure.com',
-  user: process.env.DB_USER || 'eventflowadmin@eventflowmysql',
-  password: process.env.DB_PASSWORD || 'MySqlSL82*',  // Replace with environment variable in Azure
+  user: process.env.DB_USER || 'eventflowadmin',
+  password: process.env.DB_PASSWORD || 'MySqlSL82*', 
   database: process.env.DB_NAME || 'eventflow_db',
   port: Number(process.env.DB_PORT || 3306),
   ssl: {
-    rejectUnauthorized: false   // Azure requires SSL, keep this
+    rejectUnauthorized: false // Required for Azure
   }
 };
 
-// Create and export pool
-let pool;
-try {
-  pool = mysql.createPool({
-    ...dbConfig,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-  });
-  console.log("Azure MySQL connection pool created successfully.");
-} catch (err) {
-  console.error("Database pool creation failed:", err);
-}
-
-module.exports = pool;
-
+// Create connection pool
+let pool = null;
 
 async function initializeDatabase() {
   try {
