@@ -227,17 +227,6 @@
       -webkit-text-stroke: 1px black;
     }
 
-    .register-section {
-      position: absolute;
-      top: 70px;
-      right: 20px;
-      background: white;
-      padding: 10px;
-      border: 2px solid black;
-      box-shadow: 4px 4px 0px black;
-      z-index: 10;
-    }
-
     #backBtn {
       margin-top: 20px;
       background: white;
@@ -284,11 +273,6 @@
   <div class="module-header-title">TOURNAMENT BRACKET</div>
 
   <div id="status" class="status-disconnected">Connecting to host...</div>
-  
-  <div id="registerSection" class="register-section" style="display:none;">
-    <input type="text" id="regName" placeholder="Enter your name" />
-    <button id="regBtn">Register</button>
-  </div>
 
   <div id="bracketSection" class="main-content hidden">
     <div class="bracket-scroll">
@@ -316,9 +300,6 @@
     const bracketContainer = document.getElementById('bracketContainer');
     const championSection = document.getElementById('championSection');
     const backBtn = document.getElementById('backBtn');
-    const registerSection = document.getElementById('registerSection');
-    const regNameInput = document.getElementById('regName');
-    const regBtn = document.getElementById('regBtn');
 
     // Get ID from URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -361,26 +342,12 @@
       if (!bracket || !bracket.rounds || bracket.rounds.length === 0) {
         bracketContainer.innerHTML = '<p>No bracket created yet.</p>';
         championSection.innerHTML = '';
-        registerSection.style.display = 'none';
         bracketSection.classList.remove('hidden'); // Show empty state
         return;
       }
 
       bracketSection.classList.remove('hidden');
       bracketContainer.innerHTML = '';
-
-      // Check for open slots
-      let openSlots = 0;
-      bracket.rounds[0].forEach(m => {
-        if (m.playerA === null) openSlots++;
-        if (m.playerB === null) openSlots++;
-      });
-
-      if (openSlots > 0) {
-        registerSection.style.display = 'flex';
-      } else {
-        registerSection.style.display = 'none';
-      }
 
       bracket.rounds.forEach((round, roundIndex) => {
         const roundDiv = document.createElement('div');
@@ -483,15 +450,6 @@
     });
 
     window.addEventListener('resize', fitToScreen);
-
-    // Registration
-    regBtn.addEventListener('click', () => {
-      const name = regNameInput.value.trim();
-      if (!name) return alert('Please enter your name');
-      
-      socket.emit('registerParticipant', { tournamentId, name });
-      regNameInput.value = '';
-    });
   </script>
 </body>
 </html>
